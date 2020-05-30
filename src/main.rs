@@ -1,6 +1,6 @@
 use std::env;
 use std::process::{Command, Stdio};
-use walkdir::WalkDir;
+use jwalk::WalkDir;
 
 fn main(){
     let mut hashcat = String::from("");
