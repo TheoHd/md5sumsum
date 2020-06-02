@@ -8,4 +8,4 @@ edition = "2018"
 
 [dependencies]
 walkdir = "2"
-rust-crypto = "0.2.36"
+md5 = "0.7.0"

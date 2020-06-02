@@ -2,9 +2,7 @@
 
 use std::env;
 use walkdir::WalkDir;
-use crypto::md5::Md5;
-use crypto::digest::Digest;
-
+use md5;
 
 extern crate test;
 
@@ -15,33 +13,32 @@ pub fn walkdir_in_args() {
     }
 }
 
-pub fn get_hashcat() -> String{
-    let mut hashcat = String::from("");
+pub fn get_hashcat() -> String {
+    let mut hashcat = String::new();
     for arg in env::args().skip(1) {
-        for x in WalkDir::new(arg).into_iter().filter_map(|e| e.ok()) {
-            if !x.file_type().is_file() {
-                continue;
-            }
-            let mut digest = Md5::new();
-            digest.input_str(&x.path().display().to_string());
-            hashcat += digest.result_str().split(" ").collect::<Vec<&str>>()[0];
+        for x in WalkDir::new(arg).into_iter().filter_map(|e| e.ok()).filter(|e| e.file_type().is_file()) {
+            hashcat += &format!("{:x}", md5::compute(x.path().display().to_string()));
         }
     }
     hashcat
 }
 
 pub fn echo_cmd(hashcat: &mut String) {
-    let mut digest = Md5::new();
-    digest.input_str(hashcat);
+    md5::compute(hashcat);
 }
 
 pub fn final_print(hashcat: &mut String) {
-    let mut digest = Md5::new();
-    let mut digest2 = Md5::new();
-    digest2.input_str(hashcat);
-    digest.input_str(&digest2.result_str());
-    print!("{}",
-        digest.result_str()
+    print!(
+        "{}",
+        format!(
+            "{:x}",
+            md5::compute(
+                format!(
+                    "{:x}",
+                    md5::compute(hashcat)
+                )
+            )
+        )
     );
 }
 
