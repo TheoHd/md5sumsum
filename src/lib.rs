@@ -1,7 +1,7 @@
 #![feature(test)]
 
 use std::env;
-use walkdir::WalkDir;
+use walkdir::{WalkDir, DirEntry};
 use md5;
 
 extern crate test;
@@ -14,10 +14,12 @@ pub fn walkdir_in_args() {
 }
 
 pub fn get_hashcat() -> String {
-    let mut hashcat = String::new();
+    let mut hashcat = String::from("");
+    let mut digest;
     for arg in env::args().skip(1) {
-        for x in WalkDir::new(arg).into_iter().filter_map(|e| e.ok()).filter(|e| e.file_type().is_file()) {
-            hashcat += &format!("{:x}", md5::compute(x.path().display().to_string()));
+        for x in WalkDir::new(arg).into_iter().filter_map(Result::ok).filter(|e| !e.file_type().is_dir()) {
+            digest = md5::compute(String::from(x.path().to_string_lossy()));
+            hashcat += format!("{:x}",digest).to_string().split(" ").collect::<Vec<&str>>()[0];
         }
     }
     hashcat
