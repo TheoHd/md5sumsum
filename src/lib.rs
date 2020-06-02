@@ -1,8 +1,14 @@
 #![feature(test)]
 
+use std::io;
+use std::fs::{self, DirEntry};
+use std::path::Path;
 use std::env;
-use walkdir::{WalkDir, DirEntry};
+use walkdir::{WalkDir, DirEntry as WalkDirEntry};
 use md5;
+use rayon::prelude::*;
+use crypto::md5::Md5;
+use crypto::digest::Digest;
 
 extern crate test;
 
@@ -13,13 +19,31 @@ pub fn walkdir_in_args() {
     }
 }
 
+pub fn walkdir_with_rayon() {
+    for arg in env::args().skip(1) {
+        WalkDir::new(arg).into_iter().filter_map(|e| e.ok()).collect::<Vec<WalkDirEntry>>().par_iter();
+    }
+}
+
 pub fn get_hashcat() -> String {
-    let mut hashcat = String::from("");
+    let mut hashcat = String::new();
     let mut digest;
     for arg in env::args().skip(1) {
         for x in WalkDir::new(arg).into_iter().filter_map(Result::ok).filter(|e| !e.file_type().is_dir()) {
             digest = md5::compute(String::from(x.path().to_string_lossy()));
             hashcat += format!("{:x}",digest).to_string().split(" ").collect::<Vec<&str>>()[0];
+        }
+    }
+    hashcat
+}
+
+pub fn get_hashcat_crypt() -> String {
+    let mut hashcat = String::new();
+    for arg in env::args().skip(1) {
+        for x in WalkDir::new(arg).into_iter().filter_map(Result::ok).filter(|e| !e.file_type().is_dir()) {
+            let mut digest = Md5::new();
+            digest.input_str(&String::from(x.path().to_string_lossy()));
+            hashcat += digest.result_str().to_string().split(" ").collect::<Vec<&str>>()[0];
         }
     }
     hashcat
@@ -44,6 +68,15 @@ pub fn final_print(hashcat: &mut String) {
     );
 }
 
+pub fn final_print_crypt(hashcat: &mut String) {
+    let mut digest = Md5::new();
+    digest.input_str(hashcat);
+    let mut digest2 = Md5::new();
+    digest2.input_str(&digest.result_str());
+    drop(digest);
+    print!("{}", digest2.result_str());
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -66,8 +99,24 @@ mod tests {
     }
 
     #[bench]
+    fn test_get_hashcat_crypt(b: &mut Bencher){
+        b.iter(|| get_hashcat_crypt());
+    }
+
+    #[bench]
     fn test_final_print(b: &mut Bencher){
         let mut hashcat = get_hashcat();
         b.iter(|| final_print(&mut hashcat));
+    }
+
+    #[bench]
+    fn test_final_print_crypt(b: &mut Bencher){
+        let mut hashcat = get_hashcat();
+        b.iter(|| final_print_crypt(&mut hashcat));
+    }
+
+    #[bench]
+    fn test_walkdir_with_rayon(b: &mut Bencher){
+        b.iter(|| walkdir_with_rayon());
     }
 }
